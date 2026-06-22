@@ -14,7 +14,9 @@ const reviewSchema = new mongoose.Schema(
 
     rating: Number,
 
-    comment: String
+    comment: String,
+
+    name: String
   },
   {
     timestamps: true

@@ -19,7 +19,7 @@ exports.getReviews = async (req, res) => {
 
 exports.addReview = async (req, res) => {
   try {
-    const { garageId, userId, rating, comment } = req.body;
+    const { garageId, userId, rating, comment, name } = req.body;
 
     if (!garageId || rating === undefined || rating === null) {
       return res.status(400).json({ message: "Garage ID and rating are required." });
@@ -34,7 +34,8 @@ exports.addReview = async (req, res) => {
       garage: garageId,
       user: userId || null,
       rating: numericRating,
-      comment
+      comment,
+      name: name || null
     });
 
     // Recalculate average rating and review count for the garage

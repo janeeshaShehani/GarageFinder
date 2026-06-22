@@ -82,6 +82,16 @@ const garageSchema = new mongoose.Schema(
     rating: {
       type: Number,
       default: 0
+    },
+
+    latitude: {
+      type: Number,
+      default: null
+    },
+
+    longitude: {
+      type: Number,
+      default: null
     }
   },
   {

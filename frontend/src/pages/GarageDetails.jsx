@@ -14,8 +14,11 @@ const GarageDetails = () => {
   const [selectedRating, setSelectedRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [hoverRating, setHoverRating] = useState(0);
+  const [guestName, setGuestName] = useState('');
 
   const currentUser = JSON.parse(localStorage.getItem('user'));
+  
+  const reviewsWithComments = reviews.filter(rev => rev.comment && rev.comment.trim() !== '');
 
   const fetchGarageAndReviews = async () => {
     try {
@@ -68,20 +71,24 @@ const GarageDetails = () => {
 
   const handleGetDirections = () => {
     if (!garage) return;
-    const query = encodeURIComponent(`${garage.garageName}, ${garage.address}, ${garage.district}, Sri Lanka`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    if (garage.latitude && garage.longitude) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${garage.latitude},${garage.longitude}`, '_blank');
+    } else {
+      const query = encodeURIComponent(`${garage.garageName}, ${garage.address}, ${garage.district}, Sri Lanka`);
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+    }
   };
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    if (!reviewText.trim()) return;
 
     try {
       const payload = {
         garageId: id,
         userId: currentUser?.id || currentUser?._id,
         rating: selectedRating,
-        comment: reviewText
+        comment: reviewText,
+        name: currentUser ? currentUser.name : (guestName.trim() || 'Anonymous')
       };
 
       const response = await fetch("http://localhost:5000/api/reviews", {
@@ -96,6 +103,7 @@ const GarageDetails = () => {
         await fetchGarageAndReviews();
         setReviewText('');
         setSelectedRating(5);
+        setGuestName('');
         alert('Thank you! Your feedback has been registered and the rating updated.');
       } else {
         alert(`Failed to submit review: ${data.message}`);
@@ -168,7 +176,7 @@ const GarageDetails = () => {
             {/* About */}
             <div className="card" style={{ padding: '30px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px', color: 'var(--dark-navy)' }}>About</h2>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>{garage.description}</p>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>{garage.description && garage.description.trim() !== '' ? garage.description : "Welcome to our garage! We are dedicated to providing high-quality vehicle repair and maintenance services. Our experienced team of mechanics works with modern diagnostic equipment to ensure your vehicle is safe and running at peak performance. Contact us today or visit our center for professional automotive care."}</p>
             </div>
 
             {/* Services */}
@@ -177,7 +185,7 @@ const GarageDetails = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                 {garage.services.map((service, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                    <Check size={18} color="var(--success)" /> {service}
+                    <Check size={18} color="var(--primary-blue)" /> {service}
                   </div>
                 ))}
               </div>
@@ -270,8 +278,41 @@ const GarageDetails = () => {
                   Give Feedback & Rating
                 </h3>
 
-                {currentUser ? (
                   <form onSubmit={handleReviewSubmit}>
+                    {/* Guest Name Input (only if not logged in) */}
+                    {!currentUser && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <label htmlFor="guestName" style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                          Your Name:
+                        </label>
+                        <input
+                          type="text"
+                          id="guestName"
+                          placeholder="e.g. John Doe (or leave blank for Anonymous)"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '1px solid var(--medium-gray)',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: '1rem',
+                            outline: 'none',
+                            transition: 'border-color 0.2s, box-shadow 0.2s',
+                            fontFamily: 'inherit'
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = 'var(--primary-blue)';
+                            e.target.style.boxShadow = '0 0 0 3px rgba(10, 132, 255, 0.15)';
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = 'var(--medium-gray)';
+                            e.target.style.boxShadow = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+
                     {/* Star Rating Picker */}
                     <div style={{ marginBottom: '20px' }}>
                       <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: 'var(--text-primary)' }}>
@@ -341,7 +382,6 @@ const GarageDetails = () => {
                           e.target.style.borderColor = 'var(--medium-gray)';
                           e.target.style.boxShadow = 'none';
                         }}
-                        required
                       ></textarea>
                     </div>
 
@@ -349,40 +389,26 @@ const GarageDetails = () => {
                       Submit Feedback
                     </button>
                   </form>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '1rem' }}>
-                      Only registered users can submit feedback and ratings for garages.
-                    </p>
-                    <Link to="/login" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                      Log In to Review
-                    </Link>
-                  </div>
-                )}
               </div>
 
               {/* Reviews List */}
               <div>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '20px', color: 'var(--dark-navy)' }}>
-                  Recent Reviews ({reviews.length})
+                  Recent Reviews ({reviewsWithComments.length})
                 </h3>
 
-                {reviews.length === 0 ? (
+                {reviewsWithComments.length === 0 ? (
                   <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                     No reviews yet. Be the first to share your feedback!
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {reviews.map((rev) => {
+                    {reviewsWithComments.map((rev) => {
                       // Generate background color based on name initials
                       const reviewerName = rev.user?.name || rev.name || 'Anonymous User';
                       const firstChar = reviewerName ? reviewerName.charAt(0).toUpperCase() : 'A';
                       const charCode = firstChar.charCodeAt(0);
-                      const colors = [
-                        '#0A84FF', '#30D158', '#FF9F0A', '#BF5AF2', 
-                        '#FF375F', '#64D2FF', '#ffd60a', '#5e5ce6'
-                      ];
-                      const avatarBg = colors[charCode % colors.length];
+                      const avatarBg = 'var(--primary-blue)';
 
                       const reviewDate = rev.createdAt ? new Date(rev.createdAt).toISOString().split('T')[0] : (rev.date || '');
 
@@ -420,18 +446,6 @@ const GarageDetails = () => {
                               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                 {reviewDate}
                               </span>
-                            </div>
-
-                            {/* Stars rating */}
-                            <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star 
-                                  key={star} 
-                                  size={16} 
-                                  fill={star <= rev.rating ? 'var(--warning)' : 'none'} 
-                                  color={star <= rev.rating ? 'var(--warning)' : 'var(--dark-gray)'} 
-                                />
-                              ))}
                             </div>
 
                             {/* Comment */}

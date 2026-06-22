@@ -32,7 +32,8 @@ exports.createGarage = async (req, res) => {
     const { 
       owner, garageName, ownerName, phone, email, 
       district, address, description, openTime, 
-      closeTime, openDays, vehicleTypes, services, images 
+      closeTime, openDays, vehicleTypes, services, images,
+      latitude, longitude
     } = req.body;
 
     const newGarage = await Garage.create({
@@ -49,7 +50,9 @@ exports.createGarage = async (req, res) => {
       openDays,
       vehicleTypes,
       services,
-      images
+      images,
+      latitude: latitude !== undefined ? latitude : null,
+      longitude: longitude !== undefined ? longitude : null
     });
 
     await User.findByIdAndUpdate(owner, { role: "garage" });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Store, ImagePlus, X } from 'lucide-react';
 import { districts, services as servicesList } from '../data/services';
+import MapPicker from '../components/MapPicker';
 
 const vehicleTypesList = [
   'Motorbike', 'Three Wheeler', 'Car', 'Van', 'SUV', 'Pickup Cab', 'Lorry', 'Bus'
@@ -27,7 +28,9 @@ const GarageRegister = () => {
     closeTime: '',
     openDays: [],
     vehicleTypes: [],
-    services: []
+    services: [],
+    latitude: null,
+    longitude: null
   });
   const [customService, setCustomService] = useState('');
   const [images, setImages] = useState([]);
@@ -134,7 +137,9 @@ const GarageRegister = () => {
       closeTime: formData.closeTime,   // <-- Added to fix your error!
       openDays: formData.openDays,
       vehicleTypes: formData.vehicleTypes,
-      services: formData.services
+      services: formData.services,
+      latitude: formData.latitude,
+      longitude: formData.longitude
     };
 
     try {
@@ -216,6 +221,16 @@ const GarageRegister = () => {
               <label style={{ fontSize: '0.95rem', fontWeight: 500 }}>Full Address</label>
               <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="e.g. 123 Main Street, City" required style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
             </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.95rem', fontWeight: 500 }}>Garage Location on Map (Optional)</label>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '-8px' }}>Pinpoint your garage on the map below. This helps customers route directly to your exact location.</p>
+            <MapPicker 
+              latitude={formData.latitude} 
+              longitude={formData.longitude} 
+              onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))} 
+            />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

@@ -71,11 +71,8 @@ const GarageCard = ({ garage }) => {
           )}
         </div>
 
-        <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
-            <Phone size={16} /> Call
-          </button>
-          <Link to={`/garage/${garage._id}`} className="btn-primary" style={{ flex: 1, textAlign: 'center', display: 'block' }}>
+        <div style={{ marginTop: 'auto' }}>
+          <Link to={`/garage/${garage._id}`} className="btn-primary" style={{ display: 'block', textAlign: 'center' }}>
             View Details
           </Link>
         </div>

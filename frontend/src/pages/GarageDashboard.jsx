@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { Users, Star, Eye, CalendarCheck, Menu, Trash2, UploadCloud, CheckCircle } from 'lucide-react';
+import MapPicker from '../components/MapPicker';
 
 const DashboardHome = () => {
   const { garageId } = useParams();
@@ -349,7 +350,9 @@ const GarageDetailsEdit = () => {
     openDays: [],
     vehicleTypes: [],
     services: [],
-    images: []
+    images: [],
+    latitude: null,
+    longitude: null
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -476,6 +479,16 @@ const GarageDetailsEdit = () => {
               <label style={{ fontSize: '0.95rem', fontWeight: 500 }}>Full Address</label>
               <input type="text" name="address" value={formData.address} onChange={handleChange} required style={inputStyle} />
             </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.95rem', fontWeight: 500 }}>Garage Location on Map (Optional)</label>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '-8px' }}>Pinpoint your garage on the map below. This helps customers route directly to your exact location.</p>
+            <MapPicker 
+              latitude={formData.latitude} 
+              longitude={formData.longitude} 
+              onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))} 
+            />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -678,6 +691,8 @@ const GarageReviewsView = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const reviewsWithComments = reviews.filter(rev => rev.comment && rev.comment.trim() !== '');
+
   useEffect(() => {
     const fetchReviews = async () => {
       if (!garageId) {
@@ -708,13 +723,13 @@ const GarageReviewsView = () => {
     <div>
       <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--dark-navy)', marginBottom: '24px' }}>Customer Reviews</h1>
       
-      {reviews.length === 0 ? (
+      {reviewsWithComments.length === 0 ? (
         <div className="card" style={{ padding: '24px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
           No reviews yet. As customers rate and comment on your garage, they will appear here.
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '20px' }}>
-          {reviews.map(review => {
+          {reviewsWithComments.map(review => {
             const reviewerName = review.user?.name || review.name || 'Anonymous User';
             const reviewDate = review.createdAt ? new Date(review.createdAt).toISOString().split('T')[0] : '';
             return (
@@ -724,11 +739,7 @@ const GarageReviewsView = () => {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--dark-navy)' }}>{reviewerName}</h3>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{reviewDate}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '2px', color: 'var(--warning)' }}>
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={16} fill={i < review.rating ? 'currentColor' : 'none'} />
-                    ))}
-                  </div>
+
                 </div>
                 
                 <p style={{ color: 'var(--dark-gray)', lineHeight: 1.6, marginBottom: review.reply ? '16px' : '0' }}>

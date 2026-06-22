@@ -37,7 +37,7 @@ const About = () => {
           <h2 style={{ fontSize: '2rem', color: 'var(--dark-navy)', marginBottom: '40px', textAlign: 'center' }}>Why Choose GarageFinder?</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
             <div className="card" style={{ padding: '40px 30px', textAlign: 'center' }}>
-              <ShieldCheck size={48} style={{ color: 'var(--success)', margin: '0 auto 20px' }} />
+              <ShieldCheck size={48} style={{ color: 'var(--primary-blue)', margin: '0 auto 20px' }} />
               <h3 style={{ fontSize: '1.25rem', marginBottom: '15px' }}>Verified Garages</h3>
               <p style={{ color: 'var(--text-secondary)' }}>Every garage on our platform is verified to ensure they provide quality services and use genuine parts.</p>
             </div>
@@ -47,7 +47,7 @@ const About = () => {
               <p style={{ color: 'var(--text-secondary)' }}>Make informed decisions based on genuine reviews and ratings left by other vehicle owners in your community.</p>
             </div>
             <div className="card" style={{ padding: '40px 30px', textAlign: 'center' }}>
-              <TrendingUp size={48} style={{ color: 'var(--warning)', margin: '0 auto 20px' }} />
+              <TrendingUp size={48} style={{ color: 'var(--primary-blue)', margin: '0 auto 20px' }} />
               <h3 style={{ fontSize: '1.25rem', marginBottom: '15px' }}>Grow Your Business</h3>
               <p style={{ color: 'var(--text-secondary)' }}>Are you a garage owner? Join our network to increase your visibility and reach thousands of potential new customers.</p>
             </div>

@@ -77,7 +77,7 @@ const Register = () => {
     }}>
       <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--success)', color: 'white', marginBottom: '16px' }}>
+          <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--primary-blue)', color: 'white', marginBottom: '16px' }}>
             <UserPlus size={32} />
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--dark-navy)' }}>Create an Account</h1>
