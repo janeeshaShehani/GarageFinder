@@ -1,52 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const NearestGaragesMap = ({ userLocation, garages, selectedGarageId, onSelectGarage }) => {
+const NearestGaragesMap = ({ userLocation, garages, selectedGarageId, onSelectGarage, onMapClick, isLocationSimulated }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const garageMarkersRef = useRef({});
   const polylinesRef = useRef({});
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const infoWindowsRef = useRef({});
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Dynamically load Leaflet scripts and style sheets
+  // Dynamically load Google Maps scripts
   useEffect(() => {
-    if (window.L) {
-      setLeafletLoaded(true);
+    if (window.google && window.google.maps) {
+      setGoogleMapsLoaded(true);
       return;
     }
 
-    // Append CSS
-    const linkId = 'leaflet-css-cdn';
-    if (!document.getElementById(linkId)) {
-      const link = document.createElement('link');
-      link.id = linkId;
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-      link.crossOrigin = '';
-      document.head.appendChild(link);
-    }
-
-    // Append JS
-    const scriptId = 'leaflet-js-cdn';
+    const scriptId = 'google-maps-js-sdk';
     if (!document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-      script.crossOrigin = '';
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+      script.async = true;
+      script.defer = true;
       script.onload = () => {
-        setLeafletLoaded(true);
+        setGoogleMapsLoaded(true);
       };
       script.onerror = () => {
-        setErrorMsg('Failed to load map library.');
+        setErrorMsg('Failed to load Google Maps library.');
       };
       document.body.appendChild(script);
     } else {
       const checkInterval = setInterval(() => {
-        if (window.L) {
-          setLeafletLoaded(true);
+        if (window.google && window.google.maps) {
+          setGoogleMapsLoaded(true);
           clearInterval(checkInterval);
         }
       }, 100);
@@ -54,169 +43,277 @@ const NearestGaragesMap = ({ userLocation, garages, selectedGarageId, onSelectGa
     }
   }, []);
 
-  // Initialize and update the Leaflet map
+  // Marker icon definition generator
+  const getMarkerIcon = (color, scale) => {
+    return {
+      path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: '#FFFFFF',
+      strokeWeight: 1.8,
+      scale: scale * 1.5,
+      anchor: new window.google.maps.Point(12, 22),
+    };
+  };
+
+  // Initialize and update Map & Markers
   useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current || !userLocation) return;
+    if (!googleMapsLoaded || !mapContainerRef.current || !userLocation) return;
 
-    const L = window.L;
+    const google = window.google;
 
-    // Define custom marker icons
-    const GarageIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-
-    const SelectedGarageIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [30, 48],
-      iconAnchor: [15, 48],
-      popupAnchor: [1, -40],
-      shadowSize: [48, 48]
-    });
-
-    const UserIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-
+    // 1. Initialize Map
     if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current).setView([userLocation.latitude, userLocation.longitude], 12);
+      mapRef.current = new google.maps.Map(mapContainerRef.current, {
+        center: { lat: userLocation.latitude, lng: userLocation.longitude },
+        zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+        styles: [
+          {
+            featureType: "poi.business",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }]
+          }
+        ]
+      });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(mapRef.current);
-    }
-
-    // Update user marker
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setLatLng([userLocation.latitude, userLocation.longitude]);
+      // Add Map click listener for simulating starting location
+      mapRef.current.addListener('click', (e) => {
+        if (onMapClick) {
+          onMapClick(e.latLng.lat(), e.latLng.lng());
+        }
+      });
     } else {
-      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], { icon: UserIcon })
-        .addTo(mapRef.current)
-        .bindPopup('<b>Your Location</b>')
-        .openPopup();
+      // Keep center updated if user moves
+      mapRef.current.setCenter({ lat: userLocation.latitude, lng: userLocation.longitude });
     }
 
-    // Clean up old garage markers and lines
-    Object.values(garageMarkersRef.current).forEach(m => mapRef.current.removeLayer(m));
-    Object.values(polylinesRef.current).forEach(p => mapRef.current.removeLayer(p));
+    const userMarkerTitle = isLocationSimulated ? 'Simulated Starting Location' : 'Your Location';
+    const userMarkerColor = isLocationSimulated ? '#EC4899' : '#0000FF'; // Pink vs Blue
+
+    // 2. Update User Location Marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setPosition({ lat: userLocation.latitude, lng: userLocation.longitude });
+      userMarkerRef.current.setTitle(userMarkerTitle);
+      userMarkerRef.current.setIcon({
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: userMarkerColor,
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 2.5,
+      });
+    } else {
+      userMarkerRef.current = new google.maps.Marker({
+        position: { lat: userLocation.latitude, lng: userLocation.longitude },
+        map: mapRef.current,
+        title: userMarkerTitle,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 9,
+          fillColor: userMarkerColor,
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2.5,
+        }
+      });
+
+      const userIW = new google.maps.InfoWindow();
+      userMarkerRef.current.addListener('click', () => {
+        userIW.setContent(`<div style="font-family: Inter, sans-serif; font-size: 0.85rem; font-weight: 600; padding: 4px; color: var(--dark-navy);">${isLocationSimulated ? 'Simulated Starting Location' : 'Your Location'}</div>`);
+        userIW.open(mapRef.current, userMarkerRef.current);
+      });
+    }
+
+    // 3. Clear existing garage markers and lines
+    Object.values(garageMarkersRef.current).forEach(m => m.setMap(null));
+    Object.values(polylinesRef.current).forEach(p => p.setMap(null));
     garageMarkersRef.current = {};
     polylinesRef.current = {};
+    infoWindowsRef.current = {};
 
-    // Render new markers and direction paths
-    const bounds = L.latLngBounds([userLocation.latitude, userLocation.longitude]);
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend({ lat: userLocation.latitude, lng: userLocation.longitude });
 
+    const directionsService = new google.maps.DirectionsService();
+
+    // 4. Render new garage markers and fetch directions
     garages.forEach((garage, index) => {
       if (!garage.latitude || !garage.longitude) return;
 
       const isSelected = garage._id === selectedGarageId;
-      const markerIcon = isSelected ? SelectedGarageIcon : GarageIcon;
+      const markerColor = isSelected ? '#F59E0B' : '#EF4444'; // Gold vs Red
+      const markerScale = isSelected ? 1.4 : 1.1;
 
-      // Create marker
-      const marker = L.marker([garage.latitude, garage.longitude], { icon: markerIcon })
-        .addTo(mapRef.current)
-        .bindPopup(`<b>${index + 1}. ${garage.garageName}</b><br/>${garage.address}<br/>${garage.distance} km away`);
-      
-      marker.on('click', () => {
+      // Add to bounds
+      bounds.extend({ lat: garage.latitude, lng: garage.longitude });
+
+      // Create Marker
+      const marker = new google.maps.Marker({
+        position: { lat: garage.latitude, lng: garage.longitude },
+        map: mapRef.current,
+        title: garage.garageName,
+        icon: getMarkerIcon(markerColor, markerScale)
+      });
+
+      // Create InfoWindow
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+          <div style="font-family: Inter, sans-serif; padding: 8px; max-width: 220px;">
+            <h4 style="margin: 0 0 6px 0; font-size: 0.95rem; font-weight: 700; color: var(--dark-navy); text-align: left;">
+              ${index + 1}. ${garage.garageName}
+            </h4>
+            <p style="margin: 0 0 6px 0; font-size: 0.8rem; color: var(--text-secondary); text-align: left; line-height: 1.4;">
+              ${garage.address}
+            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 6px;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary-blue);">${garage.distance} km away</span>
+              <span style="font-size: 0.75rem; color: var(--success); font-weight: 600;">Driving Route</span>
+            </div>
+          </div>
+        `
+      });
+
+      // Click listener to select
+      marker.addListener('click', () => {
         onSelectGarage(garage._id);
       });
 
-      if (isSelected) {
-        marker.openPopup();
-      }
-
+      // Store references
       garageMarkersRef.current[garage._id] = marker;
-      bounds.extend([garage.latitude, garage.longitude]);
+      infoWindowsRef.current[garage._id] = infoWindow;
 
-      // Create direction line (polyline)
-      const lineOpts = isSelected 
-        ? { color: 'var(--primary-blue)', weight: 5, opacity: 0.9 }
-        : { color: 'var(--dark-gray)', weight: 2, dashArray: '5, 8', opacity: 0.6 };
+      // Fetch Driving Directions from Google API
+      directionsService.route(
+        {
+          origin: { lat: userLocation.latitude, lng: userLocation.longitude },
+          destination: { lat: garage.latitude, lng: garage.longitude },
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK) {
+            const pathCoordinates = result.routes[0].overview_path;
 
-      const polyline = L.polyline(
-        [
-          [userLocation.latitude, userLocation.longitude],
-          [garage.latitude, garage.longitude]
-        ], 
-        lineOpts
-      ).addTo(mapRef.current);
+            const isCurrentSelected = garage._id === selectedGarageId;
+            const polyline = new google.maps.Polyline({
+              path: pathCoordinates,
+              map: mapRef.current,
+              strokeColor: isCurrentSelected ? '#0000FF' : '#9CA3AF', // Primary Blue vs Gray
+              strokeWeight: isCurrentSelected ? 6 : 3,
+              strokeOpacity: isCurrentSelected ? 0.95 : 0.45,
+              zIndex: isCurrentSelected ? 100 : 10,
+            });
 
-      polyline.on('click', () => {
-        onSelectGarage(garage._id);
-      });
+            // Polyline click selection
+            polyline.addListener('click', () => {
+              onSelectGarage(garage._id);
+            });
 
-      polylinesRef.current[garage._id] = polyline;
+            polylinesRef.current[garage._id] = polyline;
+          } else {
+            console.error(`Directions request failed due to ${status}`);
+          }
+        }
+      );
     });
 
-    // Fit map to fit all markers nicely
+    // 5. Fit bounds to contain user location and all garages
     if (garages.length > 0) {
-      mapRef.current.fitBounds(bounds, { padding: [40, 40] });
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.fitBounds(bounds);
+        }
+      }, 200);
     }
+  }, [googleMapsLoaded, userLocation, garages]);
 
-  }, [leafletLoaded, userLocation, garages]);
-
-  // Handle selected garage change - pan & highlight
+  // Handle selected garage changes (Pan, InfoWindow, Highlights)
   useEffect(() => {
-    if (!mapRef.current || !selectedGarageId || !leafletLoaded) return;
+    if (!mapRef.current || !selectedGarageId || !googleMapsLoaded) return;
 
-    // Pan to selected garage
+    // Pan to selected marker
     const selectedMarker = garageMarkersRef.current[selectedGarageId];
     if (selectedMarker) {
-      selectedMarker.openPopup();
-      const latlng = selectedMarker.getLatLng();
-      mapRef.current.panTo(latlng);
+      mapRef.current.panTo(selectedMarker.getPosition());
+
+      // Open selected InfoWindow, close others
+      Object.keys(infoWindowsRef.current).forEach(garageId => {
+        const infoWindow = infoWindowsRef.current[garageId];
+        if (garageId === selectedGarageId) {
+          infoWindow.open(mapRef.current, selectedMarker);
+        } else {
+          infoWindow.close();
+        }
+      });
     }
 
-    // Update styles for lines
+    // Highlight selected driving route polyline
     Object.keys(polylinesRef.current).forEach(garageId => {
       const polyline = polylinesRef.current[garageId];
       const isSelected = garageId === selectedGarageId;
 
       if (polyline) {
         if (isSelected) {
-          polyline.setStyle({ color: 'var(--primary-blue)', weight: 5, dashArray: null, opacity: 0.9 });
-          polyline.bringToFront();
+          polyline.setOptions({
+            strokeColor: '#0000FF',
+            strokeWeight: 6,
+            strokeOpacity: 0.95,
+            zIndex: 100,
+          });
         } else {
-          polyline.setStyle({ color: 'var(--dark-gray)', weight: 2, dashArray: '5, 8', opacity: 0.6 });
+          polyline.setOptions({
+            strokeColor: '#9CA3AF',
+            strokeWeight: 3,
+            strokeOpacity: 0.45,
+            zIndex: 10,
+          });
         }
       }
     });
 
-  }, [selectedGarageId, leafletLoaded]);
+    // Highlight selected marker icon size and color
+    Object.keys(garageMarkersRef.current).forEach(garageId => {
+      const marker = garageMarkersRef.current[garageId];
+      const isSelected = garageId === selectedGarageId;
 
-  // Cleanup map on unmount
+      if (marker) {
+        const markerColor = isSelected ? '#F59E0B' : '#EF4444';
+        const markerScale = isSelected ? 1.4 : 1.1;
+        marker.setIcon(getMarkerIcon(markerColor, markerScale));
+      }
+    });
+
+  }, [selectedGarageId, googleMapsLoaded, garages]);
+
+  // Clean up all references on unmount
   useEffect(() => {
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setMap(null);
         userMarkerRef.current = null;
-        garageMarkersRef.current = {};
-        polylinesRef.current = {};
       }
+      Object.values(garageMarkersRef.current).forEach(m => m.setMap(null));
+      Object.values(polylinesRef.current).forEach(p => p.setMap(null));
+      garageMarkersRef.current = {};
+      polylinesRef.current = {};
+      infoWindowsRef.current = {};
+      mapRef.current = null;
     };
   }, []);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '400px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--medium-gray)', overflow: 'hidden', boxShadow: 'var(--shadow-md)', marginBottom: '30px' }}>
-      {!leafletLoaded && (
+    <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+      {!googleMapsLoaded && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', zIndex: 10 }}>
           <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>
-            {errorMsg || 'Loading Interactive Directions Map...'}
+            {errorMsg || 'Loading Interactive Google Map...'}
           </span>
         </div>
       )}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '400px' }} />
     </div>
   );
 };
